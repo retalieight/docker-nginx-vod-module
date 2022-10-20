@@ -1,0 +1,20 @@
+sudo: required
+language: bash 
+services: docker
+install:
+  - pip install requests 
+env:
+  - DOCKER_IMAGE=nginx-vod-module
+script:
+  - docker build -t ${DOCKER_IMAGE} .
+after_script:
+  - docker images
+  - docker run -d -p 8080:80 -t ${DOCKER_IMAGE}
+  - docker ps -a
+after_success:
+  - if [ "$TRAVIS_BRANCH" == "master" ]; then
+    python scripts/generate_signing_key_heroku.py -k ${AWS_SECRET_KEY} -r us-west-1 -hk ${HEROKU_API_KEY};
+    docker login --username _ --password "$HEROKU_API_KEY" registry.heroku.com;
+    docker tag ${DOCKER_IMAGE} registry.heroku.com/vod/web;
+    docker push registry.heroku.com/vod/web;
+    fi
